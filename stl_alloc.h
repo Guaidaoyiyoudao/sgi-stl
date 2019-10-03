@@ -105,6 +105,8 @@ __STL_BEGIN_NAMESPACE
 # endif
 #endif
 
+
+//第一级内存分配，直接分配内存大小
 template <int __inst>
 class __malloc_alloc_template {
 
@@ -154,21 +156,6 @@ template <int __inst>
 void (* __malloc_alloc_template<__inst>::__malloc_alloc_oom_handler)() = 0;
 #endif
 
-template <int __inst>
-void*
-__malloc_alloc_template<__inst>::_S_oom_malloc(size_t __n)
-{
-    void (* __my_malloc_handler)();
-    void* __result;
-
-    for (;;) {
-        __my_malloc_handler = __malloc_alloc_oom_handler;
-        if (0 == __my_malloc_handler) { __THROW_BAD_ALLOC; }
-        (*__my_malloc_handler)();
-        __result = malloc(__n);
-        if (__result) return(__result);
-    }
-}
 
 template <int __inst>
 void* __malloc_alloc_template<__inst>::_S_oom_realloc(void* __p, size_t __n)
@@ -285,6 +272,7 @@ typedef malloc_alloc single_client_alloc;
   enum {_NFREELISTS = 16}; // _MAX_BYTES/_ALIGN
 #endif
 
+//第二级内存配置
 template <bool threads, int inst>
 class __default_alloc_template {
 
@@ -292,10 +280,11 @@ private:
   // Really we should use static const int x = N
   // instead of enum { x = N }, but few compilers accept the former.
 #if ! (defined(__SUNPRO_CC) || defined(__GNUC__))
-    enum {_ALIGN = 8};
+    enum {_ALIGN = 8};//8字节对齐
     enum {_MAX_BYTES = 128};
     enum {_NFREELISTS = 16}; // _MAX_BYTES/_ALIGN
 # endif
+	//与8字节对齐
   static size_t
   _S_round_up(size_t __bytes) 
     { return (((__bytes) + (size_t) _ALIGN-1) & ~((size_t) _ALIGN - 1)); }
@@ -310,8 +299,10 @@ private:
     static _Obj* __STL_VOLATILE _S_free_list[]; 
         // Specifying a size results in duplicate def for 4.1
 # else
+	//申请16个空闲链表
     static _Obj* __STL_VOLATILE _S_free_list[_NFREELISTS]; 
 # endif
+	//根据申请字节的大小，决定使用哪一条空闲链表
   static  size_t _S_freelist_index(size_t __bytes) {
         return (((__bytes) + (size_t)_ALIGN-1)/(size_t)_ALIGN - 1);
   }
@@ -349,6 +340,7 @@ public:
   {
     void* __ret = 0;
 
+	//如果申请的大小大于128字节，直接调用第一级分配器
     if (__n > (size_t) _MAX_BYTES) {
       __ret = malloc_alloc::allocate(__n);
     }
@@ -364,8 +356,9 @@ public:
 #     endif
       _Obj* __RESTRICT __result = *__my_free_list;
       if (__result == 0)
-        __ret = _S_refill(_S_round_up(__n));
+        __ret = _S_refill(_S_round_up(__n));//对__n进行字节对齐
       else {
+		  //指向当前区块所指向的空闲区块，返回当前区块
         *__my_free_list = __result -> _M_free_list_link;
         __ret = __result;
       }
@@ -377,9 +370,11 @@ public:
   /* __p may not be 0 */
   static void deallocate(void* __p, size_t __n)
   {
+	  //如果大于128字节，调用第一级
     if (__n > (size_t) _MAX_BYTES)
       malloc_alloc::deallocate(__p, __n);
     else {
+
       _Obj* __STL_VOLATILE*  __my_free_list
           = _S_free_list + _S_freelist_index(__n);
       _Obj* __q = (_Obj*)__p;
@@ -389,6 +384,7 @@ public:
       /*REFERENCED*/
       _Lock __lock_instance;
 #       endif /* _NOTHREADS */
+	  //将该区块加入到空闲链表中
       __q -> _M_free_list_link = *__my_free_list;
       *__my_free_list = __q;
       // lock is released here
@@ -434,26 +430,34 @@ __default_alloc_template<__threads, __inst>::_S_chunk_alloc(size_t __size,
     size_t __bytes_left = _S_end_free - _S_start_free;
 
     if (__bytes_left >= __total_bytes) {
+		//剩余空间足够，直接分配这么多
         __result = _S_start_free;
         _S_start_free += __total_bytes;
         return(__result);
     } else if (__bytes_left >= __size) {
+		//剩余空间不够分配指定大小，但是还能分配一些
+
+		//返回分配的数量
         __nobjs = (int)(__bytes_left/__size);
+		
         __total_bytes = __size * __nobjs;
         __result = _S_start_free;
         _S_start_free += __total_bytes;
         return(__result);
     } else {
+		//剩余空间完全不够，分配2倍的内存
         size_t __bytes_to_get = 
 	  2 * __total_bytes + _S_round_up(_S_heap_size >> 4);
         // Try to make use of the left-over piece.
         if (__bytes_left > 0) {
+			//把剩余的空间利用起来，加到空闲链表中
             _Obj* __STL_VOLATILE* __my_free_list =
                         _S_free_list + _S_freelist_index(__bytes_left);
 
             ((_Obj*)_S_start_free) -> _M_free_list_link = *__my_free_list;
             *__my_free_list = (_Obj*)_S_start_free;
         }
+		
         _S_start_free = (char*)malloc(__bytes_to_get);
         if (0 == _S_start_free) {
             size_t __i;
@@ -464,11 +468,12 @@ __default_alloc_template<__threads, __inst>::_S_chunk_alloc(size_t __size,
             // to result in disaster on multi-process machines.
             for (__i = __size;
                  __i <= (size_t) _MAX_BYTES;
-                 __i += (size_t) _ALIGN) {
+                 __i += (size_t) _ALIGN) 
+			{
                 __my_free_list = _S_free_list + _S_freelist_index(__i);
                 __p = *__my_free_list;
                 if (0 != __p) {
-                    *__my_free_list = __p -> _M_free_list_link;
+                    *__my_free_list= __p -> _M_free_list_link;
                     _S_start_free = (char*)__p;
                     _S_end_free = _S_start_free + __i;
                     return(_S_chunk_alloc(__size, __nobjs));
@@ -676,7 +681,7 @@ struct __allocator {
   template <class _Tp1> struct rebind {
     typedef __allocator<_Tp1, _Alloc> other;
   };
-
+  
   __allocator() __STL_NOTHROW {}
   __allocator(const __allocator& __a) __STL_NOTHROW
     : __underlying_alloc(__a.__underlying_alloc) {}
@@ -692,7 +697,7 @@ struct __allocator {
   _Tp* allocate(size_type __n, const void* = 0) {
     return __n != 0 
         ? static_cast<_Tp*>(__underlying_alloc.allocate(__n * sizeof(_Tp))) 
-        : 0;
+        : 0; 
   }
 
   // __p is not permitted to be a null pointer.
