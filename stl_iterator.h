@@ -164,6 +164,7 @@ template <class _BidirectionalIterator, class _Tp, class _Reference = _Tp&,
 template <class _BidirectionalIterator, class _Tp, class _Reference, 
           class _Distance> 
 #endif
+//反向双向迭代器
 class reverse_bidirectional_iterator {
   typedef reverse_bidirectional_iterator<_BidirectionalIterator, _Tp, 
                                          _Reference, _Distance>  _Self;
@@ -269,6 +270,8 @@ inline bool operator!=(
 //  reverse_bidirectional_iterator is no longer part of the draft
 //  standard, but it is retained for backward compatibility.
 
+
+//反向迭代器
 template <class _Iterator>
 class reverse_iterator 
 {

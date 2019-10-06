@@ -352,7 +352,7 @@ public:
       // unwinding.
 #     ifndef _NOTHREADS
       /*REFERENCED*/
-      _Lock __lock_instance;
+      _Lock __lock_instance;	
 #     endif
       _Obj* __RESTRICT __result = *__my_free_list;
       if (__result == 0)
@@ -459,6 +459,7 @@ __default_alloc_template<__threads, __inst>::_S_chunk_alloc(size_t __size,
         }
 		
         _S_start_free = (char*)malloc(__bytes_to_get);
+		// malloc分配失败了
         if (0 == _S_start_free) {
             size_t __i;
             _Obj* __STL_VOLATILE* __my_free_list;
@@ -472,8 +473,10 @@ __default_alloc_template<__threads, __inst>::_S_chunk_alloc(size_t __size,
 			{
                 __my_free_list = _S_free_list + _S_freelist_index(__i);
                 __p = *__my_free_list;
+				//空闲链表中还有空间
                 if (0 != __p) {
                     *__my_free_list= __p -> _M_free_list_link;
+					//把这个加入到我们的内存池中
                     _S_start_free = (char*)__p;
                     _S_end_free = _S_start_free + __i;
                     return(_S_chunk_alloc(__size, __nobjs));
@@ -499,10 +502,10 @@ __default_alloc_template<__threads, __inst>::_S_chunk_alloc(size_t __size,
 /* We hold the allocation lock.                                         */
 template <bool __threads, int __inst>
 void*
-__default_alloc_template<__threads, __inst>::_S_refill(size_t __n)
+__default_alloc_template<__threads, __inst>::_S_refill(size_t __n) // __n是8字节对齐的
 {
     int __nobjs = 20;
-    char* __chunk = _S_chunk_alloc(__n, __nobjs);
+    char* __chunk = _S_chunk_alloc(__n, __nobjs); //注意 nobjs会因为空间不足小于20
     _Obj* __STL_VOLATILE* __my_free_list;
     _Obj* __result;
     _Obj* __current_obj;
@@ -513,15 +516,20 @@ __default_alloc_template<__threads, __inst>::_S_refill(size_t __n)
     __my_free_list = _S_free_list + _S_freelist_index(__n);
 
     /* Build free list in chunk */
-      __result = (_Obj*)__chunk;
+	
+      __result = (_Obj*)__chunk; //返回给客户端
+	  //指向下一个块
       *__my_free_list = __next_obj = (_Obj*)(__chunk + __n);
       for (__i = 1; ; __i++) {
         __current_obj = __next_obj;
         __next_obj = (_Obj*)((char*)__next_obj + __n);
+		//_nobjs不一定是20，可能空间不够小于20
         if (__nobjs - 1 == __i) {
+			//已经构建19个，第一个返回给客户端了
             __current_obj -> _M_free_list_link = 0;
             break;
         } else {
+			//构建链表
             __current_obj -> _M_free_list_link = __next_obj;
         }
       }

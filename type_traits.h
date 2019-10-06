@@ -52,6 +52,8 @@ template <class T> inline void copy(T* source,T* destination,int n) {
 */
 
 
+
+//用于生成类型进行重载函数的选择
 struct __true_type {
 };
 

@@ -39,11 +39,13 @@
 
 __STL_BEGIN_NAMESPACE
 
-struct input_iterator_tag {};
-struct output_iterator_tag {};
-struct forward_iterator_tag : public input_iterator_tag {};
-struct bidirectional_iterator_tag : public forward_iterator_tag {};
-struct random_access_iterator_tag : public bidirectional_iterator_tag {};
+
+//用于函数重载，不同的迭代器类型调用不同实现的同名函数
+struct input_iterator_tag {};//输入迭代器
+struct output_iterator_tag {};//输出迭代器
+struct forward_iterator_tag : public input_iterator_tag {};//单向迭代器
+struct bidirectional_iterator_tag : public forward_iterator_tag {};//双向迭代器
+struct random_access_iterator_tag : public bidirectional_iterator_tag {};//随机迭代器
 
 // The base classes input_iterator, output_iterator, forward_iterator,
 // bidirectional_iterator, and random_access_iterator are not part of
@@ -91,6 +93,9 @@ template <class _Tp, class _Distance> struct random_access_iterator {
   typedef _Tp&                       reference;
 };
 
+
+//只需要指定迭代器的类型和元素的类型就可以了
+//一般如果自己要实现迭代器的话，就继承这个就行了
 #ifdef __STL_USE_NAMESPACES
 template <class _Category, class _Tp, class _Distance = ptrdiff_t,
           class _Pointer = _Tp*, class _Reference = _Tp&>
@@ -105,6 +110,7 @@ struct iterator {
 
 #ifdef __STL_CLASS_PARTIAL_SPECIALIZATION
 
+//迭代器的萃取机
 template <class _Iterator>
 struct iterator_traits {
   typedef typename _Iterator::iterator_category iterator_category;
@@ -114,6 +120,7 @@ struct iterator_traits {
   typedef typename _Iterator::reference         reference;
 };
 
+//偏特化 对于指针类型的萃取
 template <class _Tp>
 struct iterator_traits<_Tp*> {
   typedef random_access_iterator_tag iterator_category;
@@ -122,7 +129,7 @@ struct iterator_traits<_Tp*> {
   typedef _Tp*                        pointer;
   typedef _Tp&                        reference;
 };
-
+//常量指针的萃取
 template <class _Tp>
 struct iterator_traits<const _Tp*> {
   typedef random_access_iterator_tag iterator_category;
@@ -180,6 +187,8 @@ value_type(const _Iter& __i) { return __value_type(__i); }
 
 #else /* __STL_CLASS_PARTIAL_SPECIALIZATION */
 
+
+//通过一层包装获取迭代器的类型
 template <class _Tp, class _Distance> 
 inline input_iterator_tag 
 iterator_category(const input_iterator<_Tp, _Distance>&)
@@ -268,6 +277,7 @@ template <class _InputIterator, class _Distance>
 inline void __distance(_InputIterator __first, _InputIterator __last,
                        _Distance& __n, input_iterator_tag)
 {
+	//输入迭代器是单向迭代器
   while (__first != __last) { ++__first; ++__n; }
 }
 
@@ -277,6 +287,7 @@ inline void __distance(_RandomAccessIterator __first,
                        _Distance& __n, random_access_iterator_tag)
 {
   __STL_REQUIRES(_RandomAccessIterator, _RandomAccessIterator);
+  //随机接入迭代器可以直接+n
   __n += __last - __first;
 }
 

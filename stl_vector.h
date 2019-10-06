@@ -119,6 +119,8 @@ struct _Vector_base
 
 #else /* __STL_USE_STD_ALLOCATORS */
 
+
+//基类用于分配内存和释放内存，不具备其他的功能
 template <class _Tp, class _Alloc> 
 class _Vector_base {
 public:
@@ -130,19 +132,21 @@ public:
   _Vector_base(size_t __n, const _Alloc&)
     : _M_start(0), _M_finish(0), _M_end_of_storage(0) 
   {
-    _M_start = _M_allocate(__n);
+    _M_start = _M_allocate(__n); //分配n个字节大小的内存
     _M_finish = _M_start;
     _M_end_of_storage = _M_start + __n;
   }
 
-  ~_Vector_base() { _M_deallocate(_M_start, _M_end_of_storage - _M_start); }
+  ~_Vector_base() { _M_deallocate(_M_start, _M_end_of_storage - _M_start); } //析构函数调用释放内存
 
 protected:
   _Tp* _M_start;
   _Tp* _M_finish;
   _Tp* _M_end_of_storage;
 
+  //使用的是2级内存分配器
   typedef simple_alloc<_Tp, _Alloc> _M_data_allocator;
+  //_n 是分配元素的数量，空间大小为 _n * sizeof(T);
   _Tp* _M_allocate(size_t __n)
     { return _M_data_allocator::allocate(__n); }
   void _M_deallocate(_Tp* __p, size_t __n) 
@@ -159,6 +163,7 @@ class vector : protected _Vector_base<_Tp, _Alloc>
   __STL_CLASS_REQUIRES(_Tp, _Assignable);
 
 private:
+	//基类的类型
   typedef _Vector_base<_Tp, _Alloc> _Base;
 public:
   // vector 的嵌套类型定义
@@ -284,6 +289,7 @@ public:
 
   ~vector() { destroy(_M_start, _M_finish); }
 
+  //复制构造函数
   vector<_Tp, _Alloc>& operator=(const vector<_Tp, _Alloc>& __x);
   void reserve(size_type __n) {
     if (capacity() < __n) {
@@ -337,11 +343,14 @@ public:
   const_reference back() const { return *(end() - 1); }
 
   void push_back(const _Tp& __x) {
+	//直接插入，并调用元素的构造函数
     if (_M_finish != _M_end_of_storage) {
       construct(_M_finish, __x);
       ++_M_finish;
     }
+	//空间不够了
     else
+		//调用插入函数，其位置是最后一个元素的下一位
       _M_insert_aux(end(), __x);
   }
   void push_back() {
@@ -352,6 +361,7 @@ public:
     else
       _M_insert_aux(end());
   }
+  //两个vector交换，其实交换的是内部的指针，即迭代器
   void swap(vector<_Tp, _Alloc>& __x) {
     __STD::swap(_M_start, __x._M_start);
     __STD::swap(_M_finish, __x._M_finish);
@@ -360,10 +370,13 @@ public:
 
   iterator insert(iterator __position, const _Tp& __x) {
     size_type __n = __position - begin();
+
+	//空间足够
     if (_M_finish != _M_end_of_storage && __position == end()) {
       construct(_M_finish, __x);
       ++_M_finish;
     }
+	//空间不够
     else
       _M_insert_aux(__position, __x);
     return begin() + __n;
@@ -413,8 +426,10 @@ public:
   }
   iterator erase(iterator __position) {
     if (__position + 1 != end())
+		//擦除，其实就是把该位置后面的向前移一位
       copy(__position + 1, _M_finish, __position);
     --_M_finish;
+	//析构最后一个元素
     destroy(_M_finish);
     return __position;
   }
@@ -425,10 +440,14 @@ public:
     return __first;
   }
 
+  //调正大小的函数
   void resize(size_type __new_size, const _Tp& __x) {
+	 //如果新大小小于原先的大小
     if (__new_size < size()) 
+		//擦除后面的元素
       erase(begin() + __new_size, end());
     else
+		//大于原来的大小，把新生成的元素全部赋值为__x
       insert(end(), __new_size - size(), __x);
   }
   void resize(size_type __new_size) { resize(__new_size, _Tp()); }
@@ -500,6 +519,7 @@ template <class _Tp, class _Alloc>
 inline bool 
 operator==(const vector<_Tp, _Alloc>& __x, const vector<_Tp, _Alloc>& __y)
 {
+	//大小相等并且指向的内存地址也相同
   return __x.size() == __y.size() &&
          equal(__x.begin(), __x.end(), __y.begin());
 }
@@ -669,24 +689,36 @@ vector<_Tp, _Alloc>::_M_insert_aux(iterator __position)
   if (_M_finish != _M_end_of_storage) {
     construct(_M_finish, *(_M_finish - 1));
     ++_M_finish;
+	//把pos后面的元素往后移一位
     copy_backward(__position, _M_finish - 2, _M_finish - 1);
+	//默认构造函数
     *__position = _Tp();
   }
+  //空间不足以插入一个元素了
   else {
     const size_type __old_size = size();
+	//开辟两倍的空间，如果是第一次插入，则是1
     const size_type __len = __old_size != 0 ? 2 * __old_size : 1;
+	//分配
     iterator __new_start = _M_allocate(__len);
     iterator __new_finish = __new_start;
     __STL_TRY {
+	 //把之前的空间的元素复制到新的空间里面
+	 //先把插入位置之前的元素复制到新的空间 [_M_start,__position)
       __new_finish = uninitialized_copy(_M_start, __position, __new_start);
+	//插入一个默认值的元素
       construct(__new_finish);
       ++__new_finish;
+	 //插入位置之后的元素复制到新的空间
       __new_finish = uninitialized_copy(__position, _M_finish, __new_finish);
     }
     __STL_UNWIND((destroy(__new_start,__new_finish), 
                   _M_deallocate(__new_start,__len)));
+	//调用元素的析构函数
     destroy(begin(), end());
+	//释放原先的空间
     _M_deallocate(_M_start, _M_end_of_storage - _M_start);
+	//调整
     _M_start = __new_start;
     _M_finish = __new_finish;
     _M_end_of_storage = __new_start + __len;
@@ -816,6 +848,7 @@ vector<_Tp, _Alloc>::insert(iterator __position,
 {
   if (__first != __last) {
     size_type __n = 0;
+	//获取要插入元素的数量
     distance(__first, __last, __n);
     if (size_type(_M_end_of_storage - _M_finish) >= __n) {
       const size_type __elems_after = _M_finish - __position;

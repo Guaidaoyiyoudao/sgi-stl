@@ -45,19 +45,27 @@ __STL_BEGIN_NAMESPACE
 
 template <class _T1, class _T2>
 inline void _Construct(_T1* __p, const _T2& __value) {
+	//使用new placement语法，对已经分配的空间构造
   new ((void*) __p) _T1(__value);
 }
 
 template <class _T1>
 inline void _Construct(_T1* __p) {
+	//使用new placement语法，对已经分配的空间构造
   new ((void*) __p) _T1();
 }
 
 template <class _Tp>
 inline void _Destroy(_Tp* __pointer) {
+	//调用析构函数
   __pointer->~_Tp();
 }
 
+
+//根据元素是否具有析构函数调用不同的重载函数
+
+
+//有析构函数的元素
 template <class _ForwardIterator>
 void
 __destroy_aux(_ForwardIterator __first, _ForwardIterator __last, __false_type)
@@ -65,7 +73,7 @@ __destroy_aux(_ForwardIterator __first, _ForwardIterator __last, __false_type)
   for ( ; __first != __last; ++__first)
     destroy(&*__first);
 }
-
+//无析构函数的元素，就不用调用了 比如int char类型
 template <class _ForwardIterator> 
 inline void __destroy_aux(_ForwardIterator, _ForwardIterator, __true_type) {}
 
@@ -73,6 +81,7 @@ template <class _ForwardIterator, class _Tp>
 inline void 
 __destroy(_ForwardIterator __first, _ForwardIterator __last, _Tp*)
 {
+	//通过萃取得知该元素类型是否具有析构函数
   typedef typename __type_traits<_Tp>::has_trivial_destructor
           _Trivial_destructor;
   __destroy_aux(__first, __last, _Trivial_destructor());
@@ -95,8 +104,10 @@ inline void _Destroy(wchar_t*, wchar_t*) {}
 // --------------------------------------------------
 // Old names from the HP STL.
 
+//重载函数，分有值构造和无值
 template <class _T1, class _T2>
 inline void construct(_T1* __p, const _T2& __value) {
+
   _Construct(__p, __value);
 }
 
