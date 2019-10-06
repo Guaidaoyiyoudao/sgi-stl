@@ -9,8 +9,9 @@
 
 ### 学习顺序 ###
 
-	1.[stl_alloc](https://github.com/Guaidaoyiyoudao/sgi-stl/blob/learn/stl_alloc.h)
-	2.[stl_iterator_base](https://github.com/Guaidaoyiyoudao/sgi-stl/blob/learn/stl_iterator_base.h)
-	3.[stl_iterator](https://github.com/Guaidaoyiyoudao/sgi-stl/blob/learn/stl_iterator.h)
-	4.[stl_construct](https://github.com/Guaidaoyiyoudao/sgi-stl/blob/learn/stl_construct.h)
-	5.[stl_vector](https://github.com/Guaidaoyiyoudao/sgi-stl/blob/learn/stl_vector.h)
+- [x] [stl_alloc](https://github.com/Guaidaoyiyoudao/sgi-stl/blob/learn/stl_alloc.h)
+- [x] [stl_iterator_base](https://github.com/Guaidaoyiyoudao/sgi-stl/blob/learn/stl_iterator_base.h)
+- [x] [stl_iterator](https://github.com/Guaidaoyiyoudao/sgi-stl/blob/learn/stl_iterator.h)
+- [x] [stl_construct](https://github.com/Guaidaoyiyoudao/sgi-stl/blob/learn/stl_construct.h)
+- [x] [stl_vector](https://github.com/Guaidaoyiyoudao/sgi-stl/blob/learn/stl_vector.h)
+
